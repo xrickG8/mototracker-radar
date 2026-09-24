@@ -1506,6 +1506,17 @@
       else if (tipo === 'success') tg.HapticFeedback.notificationOccurred('success');
     }
 
+    // ——— ESTADO GLOBAL RADAR & TELEMETRÍA ———
+    let radarMapInstance = null;
+    let capaMapaActual = null;
+    let tipoCapaActiva = 'google_oscuro';
+    let markerEsposa = null;
+    let markerRick = null;
+    let polylineRutaHoy = null;
+    let ultimasPosiciones = { esposa: null, rick: null };
+    let radarAutoRefresco = null;
+    let primerEnfoqueHecho = false;
+
     // ——— GESTIÓN DE PESTAÑAS PRINCIPALES ———
     function toggleNav() {
       haptico('light');
@@ -2371,17 +2382,6 @@
     setInterval(sincronizarChatAuto, 2500);
     initSwipeGestures();
 
-    // Gestión de pestaña inicial inteligente
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const tabParam = urlParams.get('tab');
-      const tabGuardada = localStorage.getItem('miniapp_tab');
-      let tabDestino = tabParam || tabGuardada || 'radar';
-      cambiarTab(tabDestino);
-    } catch(e) {
-      cambiarTab('radar');
-    }
-
     // ——— PESTAÑA 2: PROYECTOS Y TAREAS ———
     async function cargarProyectos() {
       const cont = document.getElementById('proyectos-container');
@@ -2641,16 +2641,6 @@
     }
 
     // ——— PESTAÑA RADAR: CARTOGRAFÍA Y TELEMETRÍA GPS ———
-    let radarMapInstance = null;
-    let capaMapaActual = null;
-    let tipoCapaActiva = 'google_oscuro';
-    let markerEsposa = null;
-    let markerRick = null;
-    let polylineRutaHoy = null;
-    let ultimasPosiciones = { esposa: null, rick: null };
-    let radarAutoRefresco = null;
-    let primerEnfoqueHecho = false;
-
     function cambiarCapaMapa(tipo) {
       haptico('light');
       tipoCapaActiva = tipo;
@@ -2706,11 +2696,11 @@
     }
 
     function initRadarMap() {
-      if (radarMapInstance || typeof L === 'undefined') return;
-      const el = document.getElementById('radar-map');
-      if (!el) return;
-
       try {
+        if (radarMapInstance || typeof L === 'undefined') return;
+        const el = document.getElementById('radar-map');
+        if (!el) return;
+
         // Recuperar preferencia previa o usar Satélite Google HD por defecto
         try {
           const pref = localStorage.getItem('mototracker_capa_preferida');
@@ -2766,7 +2756,9 @@
       initRadarMap();
 
       setTimeout(() => {
-        if (radarMapInstance) radarMapInstance.invalidateSize();
+        try {
+          if (radarMapInstance) radarMapInstance.invalidateSize();
+        } catch(e){}
       }, 200);
 
       try {
@@ -2788,7 +2780,7 @@
         // Indicador de modo de conexión (Nube 24/7 o Local Mac)
         const ind = document.getElementById('radar-live-indicator');
         if (ind) {
-          if (data.cloud_24_7 || window.location.hostname.includes('supabase.co')) {
+          if (data.cloud_24_7 || window.location.hostname.includes('supabase.co') || window.location.hostname.includes('github.io')) {
             ind.textContent = 'NUBE 24/7';
             ind.className = 'badge verde';
           } else {
@@ -2955,6 +2947,25 @@ Aquí tiene el estado del ecosistema en formato tabular enriquecido:
     const demoBubble = document.getElementById('demo-bubble');
     if (demoBubble) {
       demoBubble.innerHTML = renderMarkdown(demoMensaje);
+    }
+
+    // ——— ARRANQUE AUTOMÁTICO RESILIENTE ———
+    function arrancarMiniApp() {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        const tabGuardada = localStorage.getItem('miniapp_tab');
+        let tabDestino = tabParam || tabGuardada || 'radar';
+        cambiarTab(tabDestino);
+      } catch(e) {
+        cambiarTab('radar');
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', arrancarMiniApp);
+    } else {
+      arrancarMiniApp();
     }
   </script>
 </body>
