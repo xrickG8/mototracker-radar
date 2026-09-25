@@ -2837,11 +2837,26 @@
           if (tmRick) tmRick.textContent = 'Ubicación apagada';
         }
 
-        // Trazado de ruta de hoy (Polyline)
+        // Trazado inteligente de ruta por tramos contiguos (evita líneas rectas si hubo pausas o huecos de señal)
         if (polylineRutaHoy) {
           if (data.ruta_hoy && data.ruta_hoy.length > 0) {
-            const pts = data.ruta_hoy.map(p => [parseFloat(p.lat), parseFloat(p.lng)]);
-            polylineRutaHoy.setLatLngs(pts);
+            const tramos = [];
+            let tramoActual = [];
+            for (let i = 0; i < data.ruta_hoy.length; i++) {
+              const p = data.ruta_hoy[i];
+              if (tramoActual.length > 0) {
+                const prev = data.ruta_hoy[i - 1];
+                const dtMin = (new Date(p.ts) - new Date(prev.ts)) / 60000;
+                // Si pasaron más de 6 minutos sin reporte, se corta el segmento para no trazar diagonales en el aire
+                if (dtMin > 6) {
+                  if (tramoActual.length > 1) tramos.push(tramoActual);
+                  tramoActual = [];
+                }
+              }
+              tramoActual.push([parseFloat(p.lat), parseFloat(p.lng)]);
+            }
+            if (tramoActual.length > 1) tramos.push(tramoActual);
+            polylineRutaHoy.setLatLngs(tramos);
           } else {
             polylineRutaHoy.setLatLngs([]);
           }
